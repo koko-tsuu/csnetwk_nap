@@ -198,15 +198,15 @@ while(not hasQuit):
                     pass
                elif(command[0] == '?'):
                     print_date('''\n
-                    Command         Description                                                           Syntax                              Sample\n
-                    join       // Join a server                                                // /join <server_ip_add> <port>        /join 192.168.1.1 12345\n
-                    leave      // Leave a server you're already connected to                   // /leave                          \n
-                    register   // Register a username before you store or request a file       // /register <name>                    /register Pikachu\n
-                    store      // Store a file on the server                                   // /store <filename>                   /store pokedex.txt\n
-                    dir        // Get the directory file list of the server                    // /dir\n
-                    get        // Request a file from the server to download                   // /get <filename>                     /get pikachu.png\n
-                    ?          // Display all available commands                               // /?\n
-                    quit       // Quit the client application.                                 // /quit\n
+                    Command         Description                                                            Syntax                              Sample\n
+                    join       // Join a server                                                   /join <server_ip_add> <port>        /join 192.168.1.1 12345\n
+                    leave      // Leave a server you're already connected to                      /leave                          \n
+                    register   // Register a username before you store or request a file          /register <name>                    /register Pikachu\n
+                    store      // Store a file on the server                                      /store <filename>                   /store pokedex.txt\n
+                    dir        // Get the directory file list of the server                       /dir\n
+                    get        // Request a file from the server to download                      /get <filename>                     /get pikachu.png\n
+                    ?          // Display all available commands                                  /?\n
+                    quit       // Quit the client application.                                    /quit\n
                                ''')
                # user quits the application
                elif (command[0] == 'quit'):
