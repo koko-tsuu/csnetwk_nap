@@ -48,9 +48,18 @@ def threadServer(conn, address):
                 listOfUsers.append(username)
 
         elif(userCommand[0] == "store"):
-           pass
+            pass
 
         elif(userCommand[0] == "dir"):
+            allFiles = [f for f in os.listdir(currentPath) if os.path.isfile(os.path.join(currentPath, f))]
+            try:
+                index = 1
+                for i in allFiles:
+                    conn.send(("\n[" + str(index) + "] " + (i)).encode())
+                    index += 1
+                print_date("Sent file list to " + str(address) + ".")
+            except IOError:
+                print_date("Failed to send file list to " + str(address) + ".")
             pass
         
         elif(userCommand[0] == "get"):
@@ -68,9 +77,12 @@ if (not pathExists):
 
 serverSocket = socket(AF_INET, SOCK_STREAM)
 
-host = input("[Setup] Host: ")
-port = input("[Setup] Port: ")
-port = int(port)
+host = "localhost"
+port = 6969
+
+#host = input("[Setup] Host: ")
+#port = input("[Setup] Port: ")
+#port = int(port)
 
 setupCorrectly = False
 listOfUsers = []

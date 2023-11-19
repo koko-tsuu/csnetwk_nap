@@ -19,7 +19,7 @@ command_dict = {
 }
 
 # printing date with string passed
-def print_date(message):
+def print_date(message=""):
     now = datetime.datetime.now()
     print("<" + str(now) + "> " + message)
 
@@ -92,6 +92,7 @@ def errorCheckCommand(list):
 os.system('cls')
 
 clientSocket = socket(AF_INET, SOCK_STREAM)
+clientSocket.settimeout(10.0)
 
 # variables
 isConnected = False # is client connected?
@@ -192,7 +193,16 @@ while(not hasQuit):
                     except IOError:
                          errorPrinting(4)
                     pass
-               elif(command[0] == 'dir'):
+               elif(command[0] == 'dir'): #currently doesn't receive all data
+                    try:
+                         clientSocket.send("dir".encode())
+                         print_date()
+                         while True:
+                              if not data: break
+                              data = clientSocket.recv(1024).decode()
+                              print(data)
+                    except IOError:
+                         print_date("[Error]: Something went wrong in requesting file list.")
                     pass
                elif(command[0] == 'get'):
                     pass
