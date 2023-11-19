@@ -3,6 +3,7 @@ import sys
 import datetime
 import os
 
+
 # command_dict -> dictionary for valid commands
 # format for dictionary:
 # command : [number of parameters needed, [data types]]
@@ -14,9 +15,10 @@ command_dict = {
      "dir" :        [0, []],
      "get" :        [1, [str]],
      "?" :          [0, []],
-     "exit" :       [0, []],
+     "quit" :       [0, []],
 }
 
+# printing date with string passed
 def print_date(message):
     now = datetime.datetime.now()
     print("<" + str(now) + "> " + message)
@@ -48,6 +50,8 @@ def errorPrinting(errNum):
        print("You're not connected to a server yet.")
   elif(errNum == 11):
        print("You have already registered.")
+  elif(errNum == 12):
+       print("Username is empty.")
 
 # checks if the user inputted the correct number of parameters
 def parameterCheck(list):
@@ -93,77 +97,126 @@ clientSocket = socket(AF_INET, SOCK_STREAM)
 isConnected = False # is client connected?
 currentUsername = ""
 hasRegistered = False
-hasExit = False # has client used the command to exit the application?
+hasQuit = False # has client used the command to quit the application?
 
 print('Welcome to the file exchange system! Type /? for the list of commands.')
 
-while(not hasExit):
+while(not hasQuit):
 
     userInput = input("Command: ")
 
-    isThereASlash = (userInput[0] == '/')
+    if (userInput != ""):
+     isThereASlash = (userInput[0] == '/')
 
-    # did user put a slash? if not, error
-    if (isThereASlash): 
+     # did user put a slash? if not, error
+     if (isThereASlash): 
 
-        # split the string
-        userCommand = userInput[1:].lower()
-        command = userCommand.split(" ")
-    
-        #error checking
-        if (errorCheckCommand(command)):
-            if (command[0] == 'join'):
-               if (isConnected):
-                    errorPrinting(9)
-               else:
-                    #client socket, TCP
+          # split the string
+          userCommand = userInput[1:]
+          command = userCommand.split(" ")
+
+          #error checking
+          if (errorCheckCommand(command)):
+               
+               # user connects to server
+               if (command[0] == 'join'):
+                    if (isConnected):
+                         errorPrinting(9)
+                    else:
+                         #client socket, TCP
+                         
+                         host = command[1]
+                         port = int(command[2])
+
+                         try: 
+                              clientSocket.connect((host, port))
+                              isConnected = True
+                              print_date("Successfully connected to the server.")      
+                         except IOError:
+                              errorPrinting(1)
+
+               # user disconnects the server
+               elif(command[0] == 'leave'):
+                    # if user is already connected
+                    if(isConnected):
+                         try:
+                              clientSocket.send("disconnect".encode())
+                              clientSocket.close()
+                              print_date("Successfully disconnected.")
+                              isConnected = False
+                              hasRegistered = False
+                         except IOError:
+                              print_date("Something went wrong in disconnecting.")
+                    else:
+                         errorPrinting(2)
+               
+               # user registers a username
+               elif(command[0] == 'register'):
+                    # user is already connected but hasn't registered
+                    if(isConnected and not hasRegistered):
+                         username = command[1]
+                         if (username != ' ' and username != ''):
+                              clientSocket.send(("register " + username).encode())
+
+                              # check if error or success
+                              result = clientSocket.recv(1024).decode()
+
+                              if (result == 'success'):
+                                   currentUsername = username
+                                   hasRegistered = True
+                                   print_date("Successfully registered. Welcome, " + currentUsername + "!")
+                              elif (result == 'username_taken'):
+                                   errorPrinting(3)
+                              elif(result == 'username_alreadyregistered'):
+                                   errorPrinting(11)
+                         else:
+                              errorPrinting(12)
+
+                    # user has already registered
+                    elif (isConnected and hasRegistered):
+                         errorPrinting(11)
                     
-                    host = command[1]
-                    port = int(command[2])
+                    # user hasn't connected yet
+                    else:
+                         errorPrinting(10)
 
-                    try: 
-                         clientSocket.connect((host, port))
-                         isConnected = True
-                         print_date("Successfully connected to the server.")      
-                    except IOError:
-                         errorPrinting(1)
-
-            elif(command[0] == 'leave'):
-               if(isConnected):
+               elif(command[0] == 'store'): ## not yet done
+                    filename = command[1]
                     try:
-                         clientSocket.send("disconnect".encode())
-                         clientSocket.close()
-                         print_date("Successfully disconnected.")
+                         f = open(filename)
+                         fData = f.read()
+
+                         for x in range(0, len(fData)):
+                              clientSocket.send(fData[x].encode())
+                         f.close()
                     except IOError:
-                        print_date("Something went wrong in disconnecting.")
-               else:
-                   errorPrinting(2)
-            elif(command[0] == 'register'):
-                if(isConnected and not hasRegistered):
-                    username = command[1]
-                    clientSocket.send("register".encode())
-                    clientSocket.send(username.encode())
+                         errorPrinting(4)
+                    pass
+               elif(command[0] == 'dir'):
+                    pass
+               elif(command[0] == 'get'):
+                    pass
+               elif(command[0] == '?'):
+                    print_date('''\n
+                    Command         Description                                                           Syntax                              Sample\n
+                    join       // Join a server                                                // /join <server_ip_add> <port>        /join 192.168.1.1 12345\n
+                    leave      // Leave a server you're already connected to                   // /leave                          \n
+                    register   // Register a username before you store or request a file       // /register <name>                    /register Pikachu\n
+                    store      // Store a file on the server                                   // /store <filename>                   /store pokedex.txt\n
+                    dir        // Get the directory file list of the server                    // /dir\n
+                    get        // Request a file from the server to download                   // /get <filename>                     /get pikachu.png\n
+                    ?          // Display all available commands                               // /?\n
+                    quit       // Quit the client application.                                 // /quit\n
+                               ''')
+               # user quits the application
+               elif (command[0] == 'quit'):
+                    print_date("Quitting the application...")
+                    hasQuit = True
 
-                    # check if error or success
-                    result = clientSocket.recv(1024).decode()
-                    if (result == 'success'):
-                         currentUsername = username
-                         hasRegistered = True
-                         print_date("Successfully registered. Welcome, " + currentUsername + "!")
-                elif (isConnected and hasRegistered):
-                    errorPrinting(11)
-                else:
-                    errorPrinting(10)
-            elif (command[0] == 'exit'):
-                print_date("Exiting the application...")
-                hasExit = True
-        else:
-               errorPrinting(6)
-
-    else:
-         errorPrinting(6) # command not found error
-       
-         
+     else:
+          errorPrinting(6) # command not found error
+          
+          
 
 
 sys.exit()
