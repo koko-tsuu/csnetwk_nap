@@ -142,7 +142,7 @@ def threadServer(conn, address):
                     # user has already registered
                     if (hasRegistered):
                         send_data(conn, "<" + str(now) + "> " + str(address[0]) + " (" + str(address[1]) + "): " + temp_username + " has already registered.")
-                        print_date(str(address[0]) + " (" + str(address[1]) + "): " + temp_username + " has already registered.")
+                        print_date(str(address[0]) + " (" + str(address[1]) + "): You already have registered.")
                     # username currently exists in active users
                     elif (username_taken(temp_username) != -1):
                         send_data(conn, "<" + str(now) + "> " + str(address[0]) + " (" + str(address[1]) + "): " + temp_username + " is taken.")
@@ -161,71 +161,88 @@ def threadServer(conn, address):
                     pass
 
                 elif(userCommand[0] == "dir"):
-                    allFiles = [f for f in os.listdir(currentPath) if os.path.isfile(os.path.join(currentPath, f))]
-                    now = datetime.datetime.now()
-                    index = 0
-                    dirList = "\n[Date & Time: " + str(now) +"]\n\nFiles: " + str(len(allFiles)) + '\n'
-                    if (len(allFiles) != 0):
-                        for i in allFiles:
-                            index += 1
-                            dirList = dirList + '[' + str(index) + '] ' + (i) + '\n'
-                    else:
-                        dirList = dirList + 'No files in the server at the moment.\n'
+                    if(hasRegistered):
+                        allFiles = [f for f in os.listdir(currentPath) if os.path.isfile(os.path.join(currentPath, f))]
+                        now = datetime.datetime.now()
+                        index = 0
+                        dirList = "\n[Date & Time: " + str(now) +"]\n\nFiles: " + str(len(allFiles)) + '\n'
+                        if (len(allFiles) != 0):
+                            for i in allFiles:
+                                index += 1
+                                dirList = dirList + '[' + str(index) + '] ' + (i) + '\n'
+                        else:
+                            dirList = dirList + 'No files in the server at the moment.\n'
 
-                    try:
-                        send_data(conn, dirList)
-                        print_date(str(address[0]) + ' (' + str(address[1]) + "): " + "Sent file list.")
-                    except:
-                        print_date(str(address[0]) + ' (' + str(address[1]) + "): " + "Failed to send file list.")
+                        try:
+                            send_data(conn, dirList)
+                            print_date(str(address[0]) + ' (' + str(address[1]) + "): " + "Sent file list.")
+                        except:
+                            print_date(str(address[0]) + ' (' + str(address[1]) + "): " + "Failed to send file list.")
+                    else:
+                        send_data(conn, errorPrinting(13))
                       
                 
                 elif(userCommand[0] == "get"):
                     pass
 
                 elif(userCommand[0] == 'all'):
-                    try:
-                        userMessage = recv_data(conn).decode()
+                    if(hasRegistered):
+                        try:
+                            userMessage = recv_data(conn).decode()
 
-                        status = broadcast_msg(userMessage)
-                        if(not status):
-                            send_data(conn, (str(address[0]) + ' (' + str(address[1]) + '): ' + ' Something went wrong in sending the broadcast message.'))
+                            status = broadcast_msg(userMessage)
+                            if(not status):
+                                send_data(conn, (str(address[0]) + ' (' + str(address[1]) + '): ' + ' Something went wrong in sending the broadcast message.'))
+                                print_date(conn, (str(address[0]) + ' (' + str(address[1]) + '): ' + ' Something went wrong in sending the broadcast message.'))
+                        except:
                             print_date(conn, (str(address[0]) + ' (' + str(address[1]) + '): ' + ' Something went wrong in sending the broadcast message.'))
-                    except:
-                        print_date(conn, (str(address[0]) + ' (' + str(address[1]) + '): ' + ' Something went wrong in sending the broadcast message.'))
+                    else:
+                        send_data(conn, errorPrinting(13))
 
                 elif(userCommand[0] == 'active'):
-                    try:
-                        now = datetime.datetime.now()
-                        index = 0
-                        dirList = "\n[Date & Time: " + str(now) + "]\n\nCurrent users on the server: " + str(len(listOfUsers)) + '\n'
-                        for i in listOfUsers:
-                            index += 1
-                            if (i[0] == ''):
-                                dirList = dirList + '[' + str(index) + '] ' + '<no username>' + ' : ' + str(i[1][0]) + ' (' + str(i[1][1]) + ')' + '\n'
-                            else:
-                                dirList = dirList + '[' + str(index) + '] ' + str(i[0]) + ' : ' + str(i[1][0]) + ' (' + str(i[1][1]) + ')' + '\n'
-                        send_data(conn, dirList)   
-                    except:
-                       print_date(str(address[0]) + ' (' + str(address[1]) + "): " + "Failed to send active user list.")
+                    if(hasRegistered):
+                        try:
+                            now = datetime.datetime.now()
+                            index = 0
+                            dirList = "\n[Date & Time: " + str(now) + "]\n\nCurrent users on the server: " + str(len(listOfUsers)) + '\n'
+                            for i in listOfUsers:
+                                index += 1
+                                if (i[0] == ''):
+                                    dirList = dirList + '[' + str(index) + '] ' + '<no username>' + ' : ' + str(i[1][0]) + ' (' + str(i[1][1]) + ')' + '\n'
+                                else:
+                                    dirList = dirList + '[' + str(index) + '] ' + str(i[0]) + ' : ' + str(i[1][0]) + ' (' + str(i[1][1]) + ')' + '\n'
+                            send_data(conn, dirList)   
+                        except:
+                            print_date(str(address[0]) + ' (' + str(address[1]) + "): " + "Failed to send active user list.")
+                    else:
+                        send_data(conn, errorPrinting(13))
 
                 elif(userCommand[0] == 'dm'):
-                    try:
-                        data = recv_data(conn).decode()
-                        userMessage = data.split(" ")
-                        userIndex = username_taken(userMessage[0])
-                        if(userIndex == 1):
-                            status = send_msg(listOfUsers[userIndex][2], userMessage[1])
-                            if(status == 1):
-                                print_date(str(address[0]) + ' (' + str(address[1]) + '): ' + "Sent message from " + username + ' to  ' + userMessage[0])
-                            elif(status == -1):
-                                print_date(str(address[0]) + ' (' + str(address[1]) + '): ' + ' Something went wrong in sending the message.')
-                                send_data(conn, (str(address[0]) + ' (' + str(address[1]) + '): ' + ' Something went wrong in sending the message.'))
-                        elif(userIndex == -1):
-                                print_date(str(address[0]) + ' (' + str(address[1]) + '): ' + userMessage[0] + ' does not exist. Sending error.')
-                                send_data(conn, (str(address[0]) + ' (' + str(address[1]) + '): ' + userMessage[0] + ' does not exist. Check if you typed their username correctly.'))
-                                
-                    except:
-                        print_date(str(address[0]) + ' (' + str(address[1]) + '): ' + ' Something went wrong in sending the message.')
+                    if(hasRegistered):
+                        try:
+                            data = recv_data(conn).decode()
+                            userMessage = data.split(" ", 1)
+                            userIndex = username_taken(userMessage[0])
+                        
+                            if (userMessage[0] != username):
+                                if(userIndex != -1):
+                                    status = send_msg(listOfUsers[userIndex][2], userMessage[1])
+                                    send_msg(conn, userMessage[1])
+                                    if(status == 1):
+                                        print_date(str(address[0]) + ' (' + str(address[1]) + '): ' + "Sent message from " + username + ' to ' + userMessage[0] + '.')
+                                    else:
+                                        print_date(str(address[0]) + ' (' + str(address[1]) + '): ' + ' Something went wrong in sending the message.')
+                                        send_data(conn, (str(address[0]) + ' (' + str(address[1]) + '): ' + ' Something went wrong in sending the message.'))
+                                else:
+                                        print_date(str(address[0]) + ' (' + str(address[1]) + '): ' + userMessage[0] + ' does not exist. Sending error.')
+                                        send_data(conn, (str(address[0]) + ' (' + str(address[1]) + '): ' + userMessage[0] + ' does not exist. Check if you typed their username correctly. Usernames are case sensitive.'))
+                            else:
+                                send_data(conn, "<" + str(now) + "> " + str(address[0]) + ' (' + str(address[1]) + '): '+ 'Oops, you are messaging to yourself!') 
+                            
+                        except:
+                            print_date(str(address[0]) + ' (' + str(address[1]) + '): ' + ' Something went wrong in sending the message.')
+                    else:
+                        send_data(errorPrinting(13)) 
 
 
         # client suddenly closed the connection

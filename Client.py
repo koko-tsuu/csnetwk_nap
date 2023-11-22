@@ -104,8 +104,7 @@ def recv_all(s, n):
 
 # checks if the user inputted the correct number of parameters
 def parameterCheck(list):
-    command = list[0]                                 # command
-
+    command = list[0]                                 # command 
     if (len(list) > 1):
          copyList = list[1].split(" ")
     else:
@@ -128,6 +127,9 @@ def parameterCheck(list):
     elif(command == 'all' or command == 'dm'):
          if (len_command_parameters >= len_dict_parameters):
               return True
+         else:
+              errorPrinting(7)
+              return False
     else:
          errorPrinting(7)
          return False
@@ -145,10 +147,13 @@ def errorCheckCommand(list):
           return False
 
 def listenMessages(client): # not done, threading needed
-     while True:
-          message = recv_data(client).decode()
-          if(message):
-               print(message)
+     try:
+          while True:
+               message = recv_data(client).decode()
+               if(message):
+                    print(message)
+     except:
+          return
      
 ########################################################################
 
@@ -157,7 +162,6 @@ os.system('cls')
 # variables
 currentUsername = ""
 isConnected = False # is client connected?
-pingWorked = False # did ping work?
 hasQuit = False # has client used the command to quit the application?
 
 print('Welcome to the file exchange system! Type /? for the list of commands.')
@@ -226,6 +230,7 @@ while(not hasQuit):
                               try:
                                    # check if error or success
                                    send_data(clientSocket, 'register ' + username)
+                                   currentUsername = username
                               except:
                                    errorPrinting(18)
                          else:
@@ -293,8 +298,8 @@ while(not hasQuit):
                               string = command[1].replace('"', '')
                               now = datetime.datetime.now()
                               send_data(clientSocket, 'dm')
-                              message = '<' + str(now) + '> [Direct Message]' + currentUsername + ': ' +  string
-                              send_data(clientSocket, command[1] + ' ' + message)
+                              message = '<' + str(now) + '> [Direct Message] ' + currentUsername + ': ' +  string
+                              send_data(clientSocket, command[0] + ' ' + message)
                          except:
                               errorPrinting(20)
                     elif (not isConnected):
@@ -337,13 +342,11 @@ while(not hasQuit):
                               isConnected = False
                               hasRegistered = False
                          except:
-                              errorPrinting(14)
+                              print_date(errorPrinting(14))
                     hasQuit = True
 
                     
      else:
           errorPrinting(6) # command not found error
-
-     pingWorked = False # reset
           
 sys.exit()
