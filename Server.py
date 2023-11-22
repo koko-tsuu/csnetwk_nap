@@ -32,18 +32,32 @@ def recv_all(s, n):
         data.extend(packet)
     return data
 
-def send_msg(client_username, msg): # not done
-    if (client_username in listOfUsers):
-
-        pass
-    else:
-        pass
-
 def username_taken(username):
     for i in range(len(listOfUsers)):
         if(listOfUsers[i][0] == username):
-            return True
-    return False
+            return i
+    return -1
+
+def send_msg(client_username, msg): 
+    index = username_taken(client_username)
+    if index != -1:
+        getClientSocket = listOfUsers[index][2] # get the socket address for it
+        try:
+            send_data(getClientSocket, msg)
+        except:
+            return -2
+        return 1
+    else:
+        return -1
+
+def broadcast_msg(msg):
+    try:
+        for i in listOfUsers:
+            if (i[0] != ''):
+                send_msg(i[2], msg)
+        return True
+    except:
+        return False
 
 # function to be ran for the threading 
 def threadServer(conn, address):
@@ -52,7 +66,7 @@ def threadServer(conn, address):
     hasRegistered = False
     username = ''
     listOfUsers.append(('', address, conn))
-    print_date(str(address[0]) + ' (' + str(address[1]) + ") has connected to the server.")
+    print_date(str(address[0]) + ' (' + str(address[1]) + "): Connected to the server.")
 
     while True:
         try:
@@ -62,27 +76,27 @@ def threadServer(conn, address):
 
             # user wants to disconnect from server
             if(userCommand[0] == "disconnect"):
-                print_date(str(address[0]) + ' (' + str(address[1]) + ") to disconnect.")
+                print_date(str(address[0]) + " (" + str(address[1]) + "): Received command to disconnect.")
                 listOfUsers.remove((username, address, conn))
                 conn.close()
-                print_date("Closed connection to " + str(address[0]) + ' ' + str(address[1]) + ".")
+                print_date(str(address[0]) + " (" + str(address[1]) + "): Closed connection.")
 
             # user wants to register
             elif(userCommand[0] == "register"):
-                print_date(str(address[0]) + " (" + str(address[1]) + ") to register.")
+                print_date(str(address[0]) + " (" + str(address[1]) + "): To register.")
                 temp_username = userCommand[1]
                 # user has already registered
                 if (hasRegistered):
                     print_date(temp_username + " has already registered. Sending error to client.")
                     send_data(conn, "username_alreadyregistered")
                 # username currently exists in active users
-                elif (username_taken(temp_username)):
+                elif (username_taken(temp_username) != -1):
                     print_date(temp_username + " is taken. Sending error to client.")
                     send_data(conn, "username_taken")
                 # successfully registered
                 else:
                     username = temp_username
-                    print_date(str(address[0]) + " (" + str(address[1]) + ") registered as " + username + ". Welcome!")
+                    print_date(str(address[0]) + " (" + str(address[1]) + "): Registered as " + username + ". Welcome!")
                     listOfUsers.remove(('', address, conn))
                     listOfUsers.append((username, address, conn))
                     send_data(conn, "success")
@@ -94,7 +108,7 @@ def threadServer(conn, address):
                 allFiles = [f for f in os.listdir(currentPath) if os.path.isfile(os.path.join(currentPath, f))]
                 try:
                     index = 0
-                    dirList = "\n Files: " + str(len(allFiles)) + '\n'
+                    dirList = "\nFiles: " + str(len(allFiles)) + '\n'
                     if (len(allFiles) != 0):
                         for i in allFiles:
                             index += 1
@@ -102,15 +116,26 @@ def threadServer(conn, address):
                     else:
                         dirList = dirList + 'No files in the server at the moment.\n'
                     send_data(conn, dirList)
-                    print_date("Sent file list to " + str(address[0]) + ' (' + str(address[1]) + ").")
+                    print_date(str(address[0]) + ' (' + str(address[1]) + "): " + "Sent file list.")
                 except:
-                    print_date("Failed to send file list to " + str(address[0]) + ' (' + str(address[1]) + ").")
+                    print_date(str(address[0]) + ' (' + str(address[1]) + "): " + "Failed to send file list.")
             
             elif(userCommand[0] == "get"):
                 pass
 
             elif(userCommand[0] == 'all'):
-                pass
+                try:
+                    userMessage = recv_data(conn).decode()
+
+                    status = broadcast_msg(userMessage)
+                    if(status):
+                        print_date(str(address[0]) + ' (' + str(address[1]) + '): ' + "Sent message from " + username + ' to all active users.')
+                        send_data(conn, 'success')
+                    else:
+                        print_date(str(address[0]) + ' (' + str(address[1]) + '): ' + ' Something went wrong in sending the broadcast message. Sending error.')
+                        send_data(conn, 'broad_fail')
+                except:
+                    print_date(str(address[0]) + ' (' + str(address[1]) + '): Something went wrong in sending the message.')
 
             elif(userCommand[0] == 'active'):
                 try:
@@ -121,17 +146,31 @@ def threadServer(conn, address):
                         if (i[0] == ''):
                             dirList = dirList + '[' + str(index) + '] ' + '<no username>' + ' : ' + str(i[1][0]) + ' (' + str(i[1][1]) + ')' + '\n'
                         else:
-                            dirList = dirList + '[' + str(index) + '] ' + (i[0]) + ' : ' + str(i[1]) + '\n'
+                            dirList = dirList + '[' + str(index) + '] ' + str(i[0]) + ' : ' + str(i[1][0]) + ' (' + str(i[1][1]) + ')' + '\n'
                     send_data(conn, dirList)
                     print_date("Sent active user list to " + str(address[0]) + ' (' + str(address[1]) + ").")
                 except:
                     print_date("Failed to send active user list to " + str(address[0]) + ' ' + str(address[1]) + ".")
-                pass
 
             elif(userCommand[0] == 'dm'):
-                pass
+                try:
+                    data = recv_data(conn).decode()
+                    userMessage = data.split(" ")
+
+                    status = send_msg(userMessage[0], userMessage[1])
+                    if(status == 1):
+                        print_date(str(address[0]) + ' (' + str(address[1]) + '): ' + "Sent message from " + username + ' to  ' + userMessage[0])
+                        send_data(conn, 'success')
+                    elif(status == -1):
+                        print_date(str(address[0]) + ' (' + str(address[1]) + '): ' + userMessage[0] + ' does not exist. Sending error.')
+                        send_data(conn, 'dm_notexist')
+                    elif(status == -2):
+                        print_date(str(address[0]) + ' (' + str(address[1]) + '): ' + ' Something went wrong in sending the message. Sending error.')
+                        send_data(conn, 'dm_msgfail')
+                except:
+                    print_date(str(address[0]) + ' (' + str(address[1]) + '): Something went wrong in sending the message.')
             
-            # checking if server is alive
+            # checking if server is alive for commands that need server connection
             elif(userCommand[0] == 'ping'):
                 try:
                     send_data(conn, 'pong')
@@ -140,6 +179,7 @@ def threadServer(conn, address):
                     conn.close()
                 pass
 
+        # client suddenly closed the connection
         except:
             print_date(str(address[0]) + ' (' + str(address[1]) + ") has unexpectedly disconnected. Socket will be closed.")
             try:
