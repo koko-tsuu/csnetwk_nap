@@ -191,6 +191,7 @@ def threadServer(conn, address):
                             userMessage = recv_data(conn).decode()
 
                             status = broadcast_msg(userMessage)
+                            print_date('Broadcasting a message from ' + username)
                             if(not status):
                                 send_data(conn, (str(address[0]) + ' (' + str(address[1]) + '): ' + ' Something went wrong in sending the broadcast message.'))
                                 print_date(conn, (str(address[0]) + ' (' + str(address[1]) + '): ' + ' Something went wrong in sending the broadcast message.'))

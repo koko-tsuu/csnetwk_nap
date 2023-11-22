@@ -280,10 +280,9 @@ while(not hasQuit):
                elif(command[0] == 'all'):
                     if(isConnected):
                          try:
-                              string = command[1].replace('"', '')
                               now = datetime.datetime.now()
                               send_data(clientSocket, 'all')
-                              message = '<' + str(now) + '> [Broadcast] ' + currentUsername + ': ' +  string
+                              message = '<' + str(now) + '> [Broadcast] ' + currentUsername + ': ' +  command[1]
                               send_data(clientSocket, message)
                          except:
                               errorPrinting(21)
@@ -295,10 +294,9 @@ while(not hasQuit):
                     if(isConnected):
                          try:
                               command = command[1].split(" ", 1)
-                              string = command[1].replace('"', '')
                               now = datetime.datetime.now()
                               send_data(clientSocket, 'dm')
-                              message = '<' + str(now) + '> [Direct Message] ' + currentUsername + ': ' +  string
+                              message = '<' + str(now) + '> [Direct Message] ' + currentUsername + ': ' +  command[1]
                               send_data(clientSocket, command[0] + ' ' + message)
                          except:
                               errorPrinting(20)
@@ -325,8 +323,8 @@ while(not hasQuit):
                     store      // Store a file on the server                                      /store <filename>                   /store pokedex.txt\n
                     dir        // Get the directory file list of the server                       /dir\n
                     get        // Request a file from the server to download                      /get <filename>                     /get pikachu.png\n
-                    all        // Message to all active users                                     /all <message>                      /all "Hello to everyone!" or /all Hello to everyone! \n 
-                    dm         // Message a specific user                                         /dm <username> <message>            /dm Alice "What are you doing" or /dm Alice What are you doing\n
+                    all        // Message to all active users                                     /all <message>                      /all Hello to everyone! \n 
+                    dm         // Message a specific user                                         /dm <username> <message>            /dm Alice What are you doing\n
                     active     // Get list of all active users                                    /active\n         
                     ?          // Display all available commands                                  /?\n
                     quit       // Quit the client application.                                    /quit\n
