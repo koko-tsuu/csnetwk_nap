@@ -32,8 +32,7 @@ def print_date(message=""):
 # printing errors, pass the number to display the respective error.
 def errorPrinting(errNum):
   now = datetime.datetime.now()
-  print("<" + str(now) + ">", end=" ")
-  print("[Error " + str(errNum) + "] :", end = " ")
+  print("<" + str(now) + "> [Error " + str(errNum) + "]:", end=' ')
   if(errNum == 1):       # wrong ip address or port number
        print("Connection to the Server has failed! Please check IP Address and Port Number. Otherwise, the server may not be active at the moment.")
   elif(errNum == 2):     # disconnection failed, user hasn't connected yet
@@ -146,34 +145,10 @@ def errorCheckCommand(list):
           return False
 
 def listenMessages(client): # not done, threading needed
-     try:
-          while True:
-               message = recv_data(client)
-               if(message):
-                    message = message.decode()
-                    print(message)
-                    if message != "username_alreadyregistered" and message != "username_taken" and message != 'success' and  message != 'broad_fail' and  message != 'dm_notexist' and message !='dm_msgfail' and message != 'pong':
-                         print(message)
-     except:
-          return
-
-#checks if server still alive, if it isn't, change status
-def pingServer(conn):
-     try:
-          send_data(conn, "ping")
-          data = recv_data(conn).decode()
-          if len(data) == 0:
-               return False
-          return True
-     except:
-          return False
-
-def pingError(socket):
-     errorPrinting(19)
-     try:
-          socket.close()
-     finally:
-          return '', False, False
+     while True:
+          message = recv_data(client).decode()
+          if(message):
+               print(message)
      
 ########################################################################
 
@@ -183,7 +158,6 @@ os.system('cls')
 currentUsername = ""
 isConnected = False # is client connected?
 pingWorked = False # did ping work?
-hasRegistered = False # has user registered?
 hasQuit = False # has client used the command to quit the application?
 
 print('Welcome to the file exchange system! Type /? for the list of commands.')
@@ -191,7 +165,7 @@ print('Welcome to the file exchange system! Type /? for the list of commands.')
 while(not hasQuit):
 
     time.sleep(0.5)
-    userInput = input("Command: ")
+    userInput = input()
 
     if (userInput != ""):
      isThereASlash = (userInput[0] == '/')
@@ -209,14 +183,7 @@ while(not hasQuit):
                # user connects to server
                if (command[0] == 'join'):
                     if (isConnected):
-                         try:
-                              pingWorked = pingServer(clientSocket)
-                         finally:
-                               if (not pingWorked):
-                                   currentUsername, isConnected, hasRegistered = pingError(clientSocket)
-                             
-                         if(pingWorked):
-                             errorPrinting(9)
+                         errorPrinting(9)
                          
                     else:
                          #client socket, TCP
@@ -226,11 +193,9 @@ while(not hasQuit):
 
                          try: 
                               clientSocket = socket(AF_INET, SOCK_STREAM)
-                              clientSocket.settimeout(10.0)
                               clientSocket.connect((host, port))
                               threading.Thread(target=listenMessages, args=(clientSocket,)).start()
                               isConnected = True
-                              print_date("Successfully connected to the server.")      
 
                          except Exception:
                               errorPrinting(1)
@@ -240,20 +205,13 @@ while(not hasQuit):
                     # check if user is connected first before trying to disconnect
                     if(isConnected):
                          try:
-                              pingWorked = pingServer(clientSocket)
-                         finally:
-                               if (not pingWorked):
-                                   currentUsername, isConnected, hasRegistered = pingError(clientSocket)
-
-                         if(pingWorked):
-                              try:
-                                   send_data(clientSocket, 'disconnect')
-                                   clientSocket.close()
-                                   print_date("Successfully disconnected.")
-                                   isConnected = False
-                                   hasRegistered = False
-                              except:
-                                   errorPrinting(14)
+                              send_data(clientSocket, 'disconnect')
+                              clientSocket.close()
+                              print_date("Successfully disconnected.")
+                              isConnected = False
+                              hasRegistered = False
+                         except:
+                              errorPrinting(14)
                     else:
                          errorPrinting(2)
                    
@@ -263,35 +221,15 @@ while(not hasQuit):
                elif(command[0] == 'register'):
                     # user is already connected but hasn't registered
                     if(isConnected):
-                         try:
-                              pingWorked = pingServer(clientSocket)
-                         finally:
-                               if (not pingWorked):
-                                   currentUsername, isConnected, hasRegistered = pingError(clientSocket)
-                         
-                         # user has already registered
-                         if (isConnected and hasRegistered and pingWorked):
-                              errorPrinting(11)
-                         # no username yet
-                         elif(isConnected and not hasRegistered and pingWorked):
-                              username = command[1]
-                              if (username != ' ' and username != ''):
-                                   try:
-                                        # check if error or success
-                                        send_data(clientSocket, 'register ' + username)
-                                        result = recv_data(clientSocket).decode()
-                                        if (result == 'success'):
-                                             currentUsername = username
-                                             hasRegistered = True
-                                             print_date("Successfully registered. Welcome, " + currentUsername + "!")
-                                        elif (result == 'username_taken'):
-                                             errorPrinting(3)
-                                        elif(result == 'username_alreadyregistered'):
-                                             errorPrinting(11)
-                                   except:
-                                        errorPrinting(18)
-                              else:
-                                   errorPrinting(12)
+                         username = command[1]
+                         if (username != ' ' and username != ''):
+                              try:
+                                   # check if error or success
+                                   send_data(clientSocket, 'register ' + username)
+                              except:
+                                   errorPrinting(18)
+                         else:
+                              errorPrinting(12)
 
                     # not connected yet
                     if (not isConnected):
@@ -316,74 +254,40 @@ while(not hasQuit):
                     # check if connected and registered, not done
                     if(isConnected):
                          try:
-                              pingWorked = pingServer(clientSocket)
-                         finally:
-                               if (not pingWorked):
-                                   currentUsername, isConnected, hasRegistered = pingError(clientSocket)
-                         
-                         if(isConnected and hasRegistered and pingWorked):
-                              try:
-                                   send_data(clientSocket, 'dir')
-                                   print(recv_data(clientSocket).decode())
-                                   send_data(clientSocket, 'success')
-                              except:
-                                   errorPrinting(15)
-                         elif (not hasRegistered):
-                              errorPrinting(13)
+                              send_data(clientSocket, 'dir')
+                         except:
+                              errorPrinting(15)
+                    elif (not hasRegistered):
+                         errorPrinting(13)
                     else:
                          errorPrinting(10)
                elif(command[0] == 'get'):
                     # not done yet...
-                    try:
-                         pingWorked = pingServer(clientSocket)
-                    finally:
-                         if (not pingWorked):
-                              currentUsername, isConnected, hasRegistered = pingError(clientSocket)
-
-                    if(pingWorked):
-                         if(isConnected):
-                              try:
-                                   clientSocket.send('get'.encode())
-                              except:
-                                   errorPrinting(17)
+                    if(isConnected):
+                         try:
+                              clientSocket.send('get'.encode())
+                         except:
+                              errorPrinting(17)
                     else:
                          errorPrinting(10)
                     
                     pass
                elif(command[0] == 'all'):
-                    
-                    try:
-                         pingWorked = pingServer(clientSocket)
-                    finally:
-                         if (not pingWorked):
-                              currentUsername, isConnected, hasRegistered = pingError(clientSocket)
-
-                    if(pingWorked and isConnected):
+                    if(isConnected):
                          try:
                               string = command[1].replace('"', '')
                               now = datetime.datetime.now()
                               send_data(clientSocket, 'all')
                               message = '<' + str(now) + '> [Broadcast] ' + currentUsername + ': ' +  string
                               send_data(clientSocket, message)
-                              
-                              status = recv_data(clientSocket).decode()
-                              if(status == 'broad_fail'):
-                                   errorPrinting(21)
                          except:
                               errorPrinting(21)
                     elif (not isConnected):
                          errorPrinting(10)
 
 
-               elif(command[0] == 'dm'):
-                   
-                    try:
-                         pingWorked = pingServer(clientSocket)
-                    finally:
-                         if (not pingWorked):
-                              currentUsername, isConnected, hasRegistered = pingError(clientSocket)
-
-                    if(pingWorked and isConnected):
+               elif(command[0] == 'dm'):  
+                    if(isConnected):
                          try:
                               command = command[1].split(" ", 1)
                               string = command[1].replace('"', '')
@@ -391,14 +295,6 @@ while(not hasQuit):
                               send_data(clientSocket, 'dm')
                               message = '<' + str(now) + '> [Direct Message]' + currentUsername + ': ' +  string
                               send_data(clientSocket, command[1] + ' ' + message)
-                              
-                              status = recv_data(clientSocket).decode()
-                              if(status == 'success'):
-                                   print(message)
-                              elif(status == 'dm_notexist'):
-                                   errorPrinting(22)
-                              elif(status == 'dm_msgfail'):
-                                   errorPrinting(20)
                          except:
                               errorPrinting(20)
                     elif (not isConnected):
@@ -406,17 +302,9 @@ while(not hasQuit):
 
                
                elif(command[0] == 'active'):
-                    try:
-                         pingWorked = pingServer(clientSocket)
-                    finally:
-                         if (not pingWorked):
-                              currentUsername, isConnected, hasRegistered = pingError(clientSocket)
-
-                    if(pingWorked and isConnected):
+                    if(isConnected):
                          try:
                               send_data(clientSocket, "active")
-                              print(recv_data(clientSocket).decode())
-                              send_data(clientSocket, 'success')     
                          except:
                               errorPrinting(16)
                          pass
@@ -443,19 +331,13 @@ while(not hasQuit):
                     print_date("Quitting the application...")
                     if(isConnected):
                          try:
-                              pingWorked = pingServer(clientSocket)
+                              clientSocket.send("disconnect".encode())
+                              clientSocket.close()
+                              print_date("Successfully disconnected.")
+                              isConnected = False
+                              hasRegistered = False
                          except:
-                              currentUsername, isConnected, hasRegistered = pingError(clientSocket)
-
-                         if(pingWorked and isConnected):
-                              try:
-                                   clientSocket.send("disconnect".encode())
-                                   clientSocket.close()
-                                   print_date("Successfully disconnected.")
-                                   isConnected = False
-                                   hasRegistered = False
-                              except:
-                                   errorPrinting(14)
+                              errorPrinting(14)
                     hasQuit = True
 
                     
