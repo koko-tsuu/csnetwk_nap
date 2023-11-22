@@ -1,7 +1,9 @@
 from socket import *
 import sys
 import datetime
+import time
 import os
+import threading
 import struct
 
 
@@ -104,17 +106,22 @@ def recv_all(s, n):
 # checks if the user inputted the correct number of parameters
 def parameterCheck(list):
     command = list[0]                                 # command
-    len_command_parameters = len(list) - 1             # num of command parameters
+
+    if (len(list) > 1):
+         copyList = list[1].split(" ")
+    else:
+         copyList = []
+
+    len_command_parameters = len(copyList)             # num of command parameters
     len_dict_parameters = command_dict[command][0]     # num of dictionary parameters
     parameter_types = command_dict[command][1]         # data types of parameters
-
+    
      # does the number of parameters in the command match with the command dictionary?
     if (len_command_parameters == len_dict_parameters):
         # if so, check if both are of equal data types
         for x in range(len(parameter_types)):
             # if not equal, return false
-            if((not isinstance(list[x+1], parameter_types[x])) and (isinstance(parameter_types[1], int) and (not list[x+1].isdigit()))):
-               print('ewan')
+            if((not isinstance(copyList[x], parameter_types[x])) and (isinstance(parameter_types[1], int) and (not copyList[x].isdigit()))):
                errorPrinting(7)
                return False
         # otherwise, return true
@@ -139,10 +146,16 @@ def errorCheckCommand(list):
           return False
 
 def listenMessages(client): # not done, threading needed
-     while True:
-          message = recv_data(client).decode()
-          if message != '':
-               pass
+     try:
+          while True:
+               message = recv_data(client)
+               if(message):
+                    message = message.decode()
+                    print(message)
+                    if message != "username_alreadyregistered" and message != "username_taken" and message != 'success' and  message != 'broad_fail' and  message != 'dm_notexist' and message !='dm_msgfail' and message != 'pong':
+                         print(message)
+     except:
+          return
 
 #checks if server still alive, if it isn't, change status
 def pingServer(conn):
@@ -177,6 +190,7 @@ print('Welcome to the file exchange system! Type /? for the list of commands.')
 
 while(not hasQuit):
 
+    time.sleep(0.5)
     userInput = input("Command: ")
 
     if (userInput != ""):
@@ -187,7 +201,7 @@ while(not hasQuit):
 
           # split the string
           userCommand = userInput[1:]
-          command = userCommand.split(" ")
+          command = userCommand.split(" ", 1)
 
           #error checking
           if (errorCheckCommand(command)):
@@ -206,14 +220,15 @@ while(not hasQuit):
                          
                     else:
                          #client socket, TCP
-                         
-                         host = command[1]
-                         port = int(command[2])
+                         command = command[1].split(" ")
+                         host = command[0]
+                         port = int(command[1])
 
                          try: 
                               clientSocket = socket(AF_INET, SOCK_STREAM)
                               clientSocket.settimeout(10.0)
                               clientSocket.connect((host, port))
+                              threading.Thread(target=listenMessages, args=(clientSocket,)).start()
                               isConnected = True
                               print_date("Successfully connected to the server.")      
 
@@ -309,8 +324,8 @@ while(not hasQuit):
                          if(isConnected and hasRegistered and pingWorked):
                               try:
                                    send_data(clientSocket, 'dir')
-                                   print_date()
-                                   print(recv_data(clientSocket).decode())           
+                                   print(recv_data(clientSocket).decode())
+                                   send_data(clientSocket, 'success')
                               except:
                                    errorPrinting(15)
                          elif (not hasRegistered):
@@ -345,17 +360,14 @@ while(not hasQuit):
 
                     if(pingWorked and isConnected):
                          try:
-                              
+                              string = command[1].replace('"', '')
                               now = datetime.datetime.now()
                               send_data(clientSocket, 'all')
-                              message = str(now) + ' [Broadcast] ' + currentUsername + ': ' +  command[2]
-                              send_data(clientSocket, command[1] + ' ' + message)
-                              print_date()
+                              message = '<' + str(now) + '> [Broadcast] ' + currentUsername + ': ' +  string
+                              send_data(clientSocket, message)
                               
                               status = recv_data(clientSocket).decode()
-                              if(status == 'success'):
-                                   print(message)
-                              elif(status == 'broad_fail'):
+                              if(status == 'broad_fail'):
                                    errorPrinting(21)
                          except:
                               errorPrinting(21)
@@ -373,11 +385,12 @@ while(not hasQuit):
 
                     if(pingWorked and isConnected):
                          try:
+                              command = command[1].split(" ", 1)
+                              string = command[1].replace('"', '')
                               now = datetime.datetime.now()
                               send_data(clientSocket, 'dm')
-                              message = str(now) + ' ' + currentUsername + ': ' +  command[2]
+                              message = '<' + str(now) + '> [Direct Message]' + currentUsername + ': ' +  string
                               send_data(clientSocket, command[1] + ' ' + message)
-                              print_date()
                               
                               status = recv_data(clientSocket).decode()
                               if(status == 'success'):
@@ -402,8 +415,8 @@ while(not hasQuit):
                     if(pingWorked and isConnected):
                          try:
                               send_data(clientSocket, "active")
-                              print_date()
-                              print(recv_data(clientSocket).decode())           
+                              print(recv_data(clientSocket).decode())
+                              send_data(clientSocket, 'success')     
                          except:
                               errorPrinting(16)
                          pass
@@ -419,8 +432,8 @@ while(not hasQuit):
                     store      // Store a file on the server                                      /store <filename>                   /store pokedex.txt\n
                     dir        // Get the directory file list of the server                       /dir\n
                     get        // Request a file from the server to download                      /get <filename>                     /get pikachu.png\n
-                    all        // Message to all active users                                     /all <message>                      /all "Hello to everyone!"\n
-                    dm         // Message a specific user                                         /dm <username> <message>            /dm Alice "What are you doing"\n
+                    all        // Message to all active users                                     /all <message>                      /all "Hello to everyone!" or /all Hello to everyone! \n 
+                    dm         // Message a specific user                                         /dm <username> <message>            /dm Alice "What are you doing" or /dm Alice What are you doing\n
                     active     // Get list of all active users                                    /active\n         
                     ?          // Display all available commands                                  /?\n
                     quit       // Quit the client application.                                    /quit\n
