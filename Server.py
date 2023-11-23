@@ -158,7 +158,21 @@ def threadServer(conn, address):
                        
 
                 elif(userCommand[0] == "store"):
-                    pass
+                    if(hasRegistered):
+                        try:
+                            copyName = userCommand[1] 
+                            fileData = recv_data(conn).decode()
+                            fileCopyPath = currentPath + '\\' + copyName
+
+                            with open(fileCopyPath, 'w') as fileCopy:
+                                fileCopy.write(fileData)
+                            now = datetime.datetime.now()
+                            send_data(conn, "<" + str(now) + "> Server has successsfully received " + copyName + '.')
+                            print_date(str(address[0]) + " (" + str(address[1]) + "): Received file from " + username + ". Stored file in server directory.")
+                        except:
+                            print_date(conn, (str(address[0]) + ' (' + str(address[1]) + '): ' + ' Something went wrong in receiving the file from the user.'))
+                    else:
+                        send_data(conn, errorPrinting(13))
 
                 elif(userCommand[0] == "dir"):
                     if(hasRegistered):
@@ -183,7 +197,28 @@ def threadServer(conn, address):
                       
                 
                 elif(userCommand[0] == "get"):
-                    pass
+                    if(hasRegistered):
+                        filename = userCommand[1]
+                        try:
+                            f = open(filename)
+                            fData = f.read()
+                            f.close()
+                            send_data(conn, 'success')
+                        except:
+                            send_data(conn, 'fail')
+                            send_data(conn, errorPrinting(5))
+                            fileExists = False
+
+                        if (fileExists):
+                            try:
+                                send_data(conn, fData)
+                                now = datetime.datetime.now()
+                                send_data(conn, "<" + str(now) + "> " + 'Successfully sent over the file.')
+                            except:  
+                                send_data(conn, errorPrinting(17))
+                                print_date("Failed to send file to " + username + ".")
+                    else:
+                        send_data(conn, errorPrinting(13))
 
                 elif(userCommand[0] == 'all'):
                     if(hasRegistered):

@@ -60,21 +60,21 @@ def errorPrinting(errNum):
   elif(errNum == 13):
        print("To use this command, you need to register first.")
   elif(errNum == 14):
-       print("Something went wrong in disconnecting.")
+       print("Something went wrong in disconnecting. Closing connection.")
   elif(errNum == 15):
-       print("Something went wrong in requesting file list.")
+       print("Something went wrong in requesting file list. Closing connection.")
   elif(errNum == 16):
-       print("Something went wrong in requesting active user list.")
+       print("Something went wrong in requesting active user list. Closing connection.")
   elif(errNum == 17):
-       print("Something went wrong in requesting and downloading the file.")
+       print("Something went wrong in requesting and downloading the file. Closing connection.")
   elif(errNum == 18):
-       print("Something went wrong in registering the username.")
+       print("Something went wrong in registering the username. Closing connection.")
   elif(errNum == 19):
-       print("Something went wrong with the server connection. Closing socket.")
+       print("Something went wrong with the server connection. Closing connection.")
   elif(errNum == 20):
-       print("Something went wrong with sending a direct message.")
+       print("Something went wrong with sending a direct message. Closing connection.")
   elif(errNum == 21):
-       print("Something went wrong with broadcasting the message.")
+       print("Something went wrong with broadcasting the message. Closing connection.")
   elif(errNum == 22):
        print("The user to be messaged does not exist. Please make sure to check if you wrote the username correctly.")
 
@@ -146,15 +146,20 @@ def errorCheckCommand(list):
           errorPrinting(6) # command not found error
           return False
 
-def listenMessages(client): # not done, threading needed
+def listenMessages(client, event): # not done, threading needed
      try:
           while True:
-               message = recv_data(client).decode()
-               if(message):
-                    print(message)
+               if(not event.is_set()):
+                    message = recv_data(client).decode()
+                    if(message):
+                         print(message)
+               else:
+                    break
      except:
           return
-     
+def closingSocket(client):
+     client.close()
+     print_date("Successfully disconnected.")
 ########################################################################
 
 os.system('cls')
@@ -194,14 +199,16 @@ while(not hasQuit):
                          command = command[1].split(" ")
                          host = command[0]
                          port = int(command[1])
+                         event = threading.Event()
 
                          try: 
                               clientSocket = socket(AF_INET, SOCK_STREAM)
                               clientSocket.connect((host, port))
-                              threading.Thread(target=listenMessages, args=(clientSocket,)).start()
+                              thread = threading.Thread(target=listenMessages, args=(clientSocket, event))
+                              thread.start()
                               isConnected = True
 
-                         except Exception:
+                         except:
                               errorPrinting(1)
 
                # user disconnects the server
@@ -216,6 +223,9 @@ while(not hasQuit):
                               hasRegistered = False
                          except:
                               errorPrinting(14)
+                              closingSocket(clientSocket)
+                              isConnected = False
+                              
                     else:
                          errorPrinting(2)
                    
@@ -240,39 +250,82 @@ while(not hasQuit):
                     if (not isConnected):
                          errorPrinting(10)
 
-               elif(command[0] == 'store'): #not yet done
-                    filename = command[1]
-                    # check if connected and registered, not done
+               elif(command[0] == 'store'):
+                    # stop listening for incoming messages
                     if(isConnected):
-                         try:
-                              f = open(filename)
-                              fData = f.read()
 
-                              for x in range(0, len(fData)):
-                                   clientSocket.send(fData[x].encode())
-                              f.close()
-                         except:
-                              errorPrinting(4)
-                    pass
+                         if(hasRegistered):
+                              
+                              # check if file exists
+                              filename = command[1]
+                              try:
+                                   f = open(filename)
+                                   fData = f.read()
+                                   f.close()
+                              except:
+                                   errorPrinting(4)    
+                                   fileExists = False
+
+                              if (fileExists):
+                                   try:
+                                        send_data(clientSocket, 'store ' + filename)
+                                        send_data(clientSocket, fData)
+
+                                   except:  
+                                        closingSocket(clientSocket)
+                                        isConnected = False
+                                        currentUsername=''
+                         else:
+                              errorPrinting(8)
+                    else:
+                         errorPrinting(10)
                
                elif(command[0] == 'dir'):
                     # check if connected and registered, not done
-                    if(isConnected):
+                    if(isConnected and hasRegistered):
                          try:
                               send_data(clientSocket, 'dir')
                          except:
                               errorPrinting(15)
-                    elif (not hasRegistered):
+                              closingSocket(clientSocket)
+                              isConnected = False
+                              currentUsername=''
+                    elif (isConnected and not hasRegistered):
                          errorPrinting(13)
                     else:
                          errorPrinting(10)
+                    
                elif(command[0] == 'get'):
                     # not done yet...
                     if(isConnected):
-                         try:
-                              clientSocket.send('get'.encode())
-                         except:
-                              errorPrinting(17)
+
+                         if(hasRegistered):
+                              # stop listening for incoming messages
+                              event.set()
+                              thread.join()
+                              
+                              filename = command[1]
+                              try:
+                                   send_data(clientSocket, 'get ' + filename)
+                                   fileStatus = recv_data(clientSocket).decode()
+                                   if (fileStatus == 'success'):
+                                        fData = recv_data(clientSocket).decode()
+                                        fp = open(filename, 'w')
+                                        fp.write(fData)
+                                        fp.close()
+                                        print(recv_data(clientSocket).decode())
+                                   else:       
+                                        print(recv_data(clientSocket))  
+                                   thread = threading.Thread(target=listenMessages, args=(clientSocket, event))
+                                   thread.start()
+                              except:
+                                   errorPrinting(17)
+                                   closingSocket(clientSocket)
+                                   isConnected = False
+                                   currentUsername=''
+                              
+                         else:
+                              errorPrinting(8)
                     else:
                          errorPrinting(10)
                     
@@ -286,6 +339,10 @@ while(not hasQuit):
                               send_data(clientSocket, message)
                          except:
                               errorPrinting(21)
+                              closingSocket(clientSocket)
+                              isConnected = False
+                              currentUsername=''
+
                     elif (not isConnected):
                          errorPrinting(10)
 
@@ -300,6 +357,10 @@ while(not hasQuit):
                               send_data(clientSocket, command[0] + ' ' + message)
                          except:
                               errorPrinting(20)
+                              closingSocket(clientSocket)
+                              isConnected = False
+                              currentUsername=''
+
                     elif (not isConnected):
                          errorPrinting(10)
 
@@ -310,12 +371,17 @@ while(not hasQuit):
                               send_data(clientSocket, "active")
                          except:
                               errorPrinting(16)
-                         pass
+                              closingSocket(clientSocket)
+                              isConnected = False
+                              currentUsername=''
+          
                     elif (not isConnected):
                          errorPrinting(10)
 
                elif(command[0] == '?'):
                     print_date('''\n
+                    NOTE: For command get, you will not be able to receive any messages while executing the command.\n
+                    \n
                     Command         Description                                                            Syntax                              Sample\n
                     join       // Join a server                                                   /join <server_ip_add> <port>        /join 192.168.1.1 12345\n
                     leave      // Leave a server you're already connected to                      /leave                          \n
