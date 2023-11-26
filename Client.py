@@ -85,11 +85,11 @@ def send_data(s, data):
 
 # unpack the message and get message length
 def recv_data(s):
-    raw_datalen = recv_all(s, 4)
-    if not raw_datalen:
-        return None
-    data_len = struct.unpack('>I', raw_datalen)[0]
-    return recv_all(s, data_len)
+     raw_datalen = recv_all(s, 4)
+     if not raw_datalen:
+          return None
+     data_len = struct.unpack('>I', raw_datalen)[0]
+     return recv_all(s, data_len)
 
 # helper function for recv_data
 def recv_all(s, n):
@@ -146,17 +146,12 @@ def errorCheckCommand(list):
           errorPrinting(6) # command not found error
           return False
 
-def listenMessages(client, event): # not done, threading needed
-     try:
-          while True:
-               if(not event.is_set()):
-                    message = recv_data(client).decode()
-                    if(message):
-                         print(message)
-               else:
-                    break
-     except:
-          return
+def listenMessages(client): # not done, threading needed
+     while True:
+          message = recv_data(client).decode()
+          if(message):
+               print(message)
+    
 def closingSocket(client):
      client.close()
      print_date("Successfully disconnected.")
@@ -199,12 +194,11 @@ while(not hasQuit):
                          command = command[1].split(" ")
                          host = command[0]
                          port = int(command[1])
-                         event = threading.Event()
 
                          try: 
                               clientSocket = socket(AF_INET, SOCK_STREAM)
                               clientSocket.connect((host, port))
-                              thread = threading.Thread(target=listenMessages, args=(clientSocket, event))
+                              thread = threading.Thread(target=listenMessages, args=(clientSocket,))
                               thread.start()
                               isConnected = True
 
@@ -220,7 +214,6 @@ while(not hasQuit):
                               clientSocket.close()
                               print_date("Successfully disconnected.")
                               isConnected = False
-                              hasRegistered = False
                          except:
                               errorPrinting(14)
                               closingSocket(clientSocket)
@@ -254,10 +247,19 @@ while(not hasQuit):
                     # stop listening for incoming messages
                     if(isConnected):
 
-                         if(hasRegistered):
-                              
+                         # connecting a new socket to handle files; the problem with the current clientsocket
+                         # is it only receives and prints messages, there's no certainty that we can receive
+                         # and store the information we need
+                         clientSocket2 = socket(AF_INET, SOCK_STREAM)
+                         clientSocket2.connect((host, port))
+                         send_data(clientSocket2, 'isregistered ' + clientSocket.getsockname()[0] + ' ' + clientSocket.getsockname()[1])
+
+                         isRegistered = recv_data(clientSocket2).decode()
+
+                         if(isRegistered):
                               # check if file exists
                               filename = command[1]
+                              print(filename)
                               try:
                                    f = open(filename)
                                    fData = f.read()
@@ -265,24 +267,36 @@ while(not hasQuit):
                               except:
                                    errorPrinting(4)    
                                    fileExists = False
+                                   send_data(clientSocket2, 'disconnect')
+                                   clientSocket2.close()
 
                               if (fileExists):
                                    try:
-                                        send_data(clientSocket, 'store ' + filename)
-                                        send_data(clientSocket, fData)
+                                        send_data(clientSocket2, 'store')
+                                        send_data(clientSocket2, filename)
+                                        send_data(clientSocket2, fData)
+                                        print(recv_data(clientSocket2).decode())
 
                                    except:  
                                         closingSocket(clientSocket)
                                         isConnected = False
                                         currentUsername=''
+
+                                   finally: 
+                                        send_data(clientSocket2, 'disconnect')
+                                        clientSocket2.close()
                          else:
                               errorPrinting(8)
+                              print(recv_data(clientSocket).decode())
+                              send_data(clientSocket2, 'disconnect')
+                              clientSocket2.close()
+                        
                     else:
                          errorPrinting(10)
                
                elif(command[0] == 'dir'):
                     # check if connected and registered, not done
-                    if(isConnected and hasRegistered):
+                    if(isConnected):
                          try:
                               send_data(clientSocket, 'dir')
                          except:
@@ -290,24 +304,27 @@ while(not hasQuit):
                               closingSocket(clientSocket)
                               isConnected = False
                               currentUsername=''
-                    elif (isConnected and not hasRegistered):
-                         errorPrinting(13)
                     else:
                          errorPrinting(10)
                     
                elif(command[0] == 'get'):
                     # not done yet...
                     if(isConnected):
+                          # connecting a new socket to handle files; the problem with the current clientsocket
+                         # is it only receives and prints messages, there's no certainty that we can receive
+                         # and store the information we need
+                         clientSocket2 = socket(AF_INET, SOCK_STREAM)
+                         clientSocket2.connect((host, port))
+                         send_data(clientSocket2, 'isregistered ' + clientSocket.getsockname()[0] + ' ' + clientSocket.getsockname()[1])
 
-                         if(hasRegistered):
-                              # stop listening for incoming messages
-                              event.set()
-                              thread.join()
-                              
+                         isRegistered = recv_data(clientSocket2).decode()
+
+                         if(isRegistered):
                               filename = command[1]
                               try:
-                                   send_data(clientSocket, 'get ' + filename)
-                                   fileStatus = recv_data(clientSocket).decode()
+                                   send_data(clientSocket2, 'get')
+                                   send_data(clientSocket2, filename)
+                                   fileStatus = recv_data(clientSocket2).decode()
                                    if (fileStatus == 'success'):
                                         fData = recv_data(clientSocket).decode()
                                         fp = open(filename, 'w')
@@ -315,21 +332,24 @@ while(not hasQuit):
                                         fp.close()
                                         print(recv_data(clientSocket).decode())
                                    else:       
-                                        print(recv_data(clientSocket))  
-                                   thread = threading.Thread(target=listenMessages, args=(clientSocket, event))
-                                   thread.start()
+                                        print(recv_data(clientSocket).decode())  
+                                  
                               except:
                                    errorPrinting(17)
                                    closingSocket(clientSocket)
                                    isConnected = False
                                    currentUsername=''
-                              
+                              finally:
+                                   send_data(clientSocket2, 'disconnect')
+                                   clientSocket2.close()
                          else:
-                              errorPrinting(8)
+                              print(recv_data(clientSocket).decode())
+                              send_data(clientSocket2, 'disconnect')
+                              clientSocket2.close()
+                              
                     else:
                          errorPrinting(10)
                     
-                    pass
                elif(command[0] == 'all'):
                     if(isConnected):
                          try:
@@ -380,7 +400,7 @@ while(not hasQuit):
 
                elif(command[0] == '?'):
                     print_date('''\n
-                    NOTE: For command get, you will not be able to receive any messages while executing the command.\n
+                    NOTE: For command get and store, you will not be able to receive any messages from anyone while executing the command.\n
                     \n
                     Command         Description                                                            Syntax                              Sample\n
                     join       // Join a server                                                   /join <server_ip_add> <port>        /join 192.168.1.1 12345\n
@@ -404,7 +424,6 @@ while(not hasQuit):
                               clientSocket.close()
                               print_date("Successfully disconnected.")
                               isConnected = False
-                              hasRegistered = False
                          except:
                               print_date(errorPrinting(14))
                     hasQuit = True

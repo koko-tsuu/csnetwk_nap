@@ -52,6 +52,7 @@ def broadcast_msg(msg):
         return True
     except:
         return False
+
     
 # printing errors, pass the number to display the respective error.
 def errorPrinting(errNum):
@@ -158,21 +159,18 @@ def threadServer(conn, address):
                        
 
                 elif(userCommand[0] == "store"):
-                    if(hasRegistered):
-                        try:
-                            copyName = userCommand[1] 
-                            fileData = recv_data(conn).decode()
-                            fileCopyPath = currentPath + '\\' + copyName
+                    try:
+                        filename = recv_data(conn).decode()
+                        fileData = recv_data(conn).decode()
+                        fileCopyPath = currentPath + '\\' + filename
 
-                            with open(fileCopyPath, 'w') as fileCopy:
-                                fileCopy.write(fileData)
-                            now = datetime.datetime.now()
-                            send_data(conn, "<" + str(now) + "> Server has successsfully received " + copyName + '.')
-                            print_date(str(address[0]) + " (" + str(address[1]) + "): Received file from " + username + ". Stored file in server directory.")
-                        except:
-                            print_date(conn, (str(address[0]) + ' (' + str(address[1]) + '): ' + ' Something went wrong in receiving the file from the user.'))
-                    else:
-                        send_data(conn, errorPrinting(13))
+                        with open(fileCopyPath, 'w') as fileCopy:
+                            fileCopy.write(fileData)
+                        now = datetime.datetime.now()
+                        send_data(conn, "<" + str(now) + "> Server has successsfully received " + filename + '.')
+                        print_date(str(address[0]) + " (" + str(address[1]) + "): Received file from " + username + ". Stored file in server directory.")
+                    except:
+                        print_date(conn, (str(address[0]) + ' (' + str(address[1]) + '): ' + ' Something went wrong in receiving the file from the user.'))
 
                 elif(userCommand[0] == "dir"):
                     if(hasRegistered):
@@ -197,28 +195,27 @@ def threadServer(conn, address):
                       
                 
                 elif(userCommand[0] == "get"):
-                    if(hasRegistered):
-                        filename = userCommand[1]
-                        try:
-                            f = open(filename)
-                            fData = f.read()
-                            f.close()
-                            send_data(conn, 'success')
-                        except:
-                            send_data(conn, 'fail')
-                            send_data(conn, errorPrinting(5))
-                            fileExists = False
+                    
+                    filename = recv_data(conn)
+                    try:
+                        f = open(filename)
+                        fData = f.read()
+                        f.close()
+                        send_data(conn, 'success')
+                    except:
+                        send_data(conn, 'fail')
+                        send_data(conn, errorPrinting(5))
+                        fileExists = False
 
-                        if (fileExists):
-                            try:
-                                send_data(conn, fData)
-                                now = datetime.datetime.now()
-                                send_data(conn, "<" + str(now) + "> " + 'Successfully sent over the file.')
-                            except:  
-                                send_data(conn, errorPrinting(17))
-                                print_date("Failed to send file to " + username + ".")
-                    else:
-                        send_data(conn, errorPrinting(13))
+                    if (fileExists):
+                        try:
+                            send_data(conn, fData)
+                            now = datetime.datetime.now()
+                            send_data(conn, "<" + str(now) + "> " + 'Successfully sent over ' + filename + '.')
+                        except:  
+                            send_data(conn, errorPrinting(17))
+                            print_date("Failed to send " + filename + ' to ' + username + ".")
+                
 
                 elif(userCommand[0] == 'all'):
                     if(hasRegistered):
@@ -279,6 +276,20 @@ def threadServer(conn, address):
                             print_date(str(address[0]) + ' (' + str(address[1]) + '): ' + ' Something went wrong in sending the message.')
                     else:
                         send_data(errorPrinting(13)) 
+
+                elif(userCommand[0] == 'isregistered'):
+                    listOfUsers.remove(('', address, conn))
+                    userHost = userCommand[1]
+                    userPort = userCommand[2]
+                    alreadyRegistered = False
+                    for i in listOfUsers:
+                        if i[1] == userHost and i[2] == userPort:
+                            if i[0] != '':
+                                alreadyRegistered = True
+                            break
+                    send_data(conn, alreadyRegistered)
+
+                    
 
 
         # client suddenly closed the connection
