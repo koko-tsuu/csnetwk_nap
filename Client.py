@@ -29,7 +29,7 @@ def print_date(message=""):
     now = datetime.datetime.now()
     print("<" + str(now) + "> " + message)
 
-# printing errors, pass the number to display the respective error.
+# printing errors, pass the number to display the respective error
 def errorPrinting(errNum):
   now = datetime.datetime.now()
   print("<" + str(now) + "> [Error " + str(errNum) + "]:", end=' ')
@@ -77,6 +77,8 @@ def errorPrinting(errNum):
        print("Something went wrong with broadcasting the message. Closing connection.")
   elif(errNum == 22):
        print("The user to be messaged does not exist. Please make sure to check if you wrote the username correctly.")
+  elif(errNum == 23):
+       print("Something went wrong with broadcasting the message. Closing connection.")
 
 # append 4-byte length to every message
 def send_data(s, data):
@@ -104,7 +106,9 @@ def recv_all(s, n):
 
 # checks if the user inputted the correct number of parameters
 def parameterCheck(list):
-    command = list[0]                                 # command 
+    command = list[0]
+
+    # just an if statement to know if it should split the string
     if (len(list) > 1):
          copyList = list[1].split(" ")
     else:
@@ -116,20 +120,27 @@ def parameterCheck(list):
     
      # does the number of parameters in the command match with the command dictionary?
     if (len_command_parameters == len_dict_parameters):
+        
         # if so, check if both are of equal data types
         for x in range(len(parameter_types)):
+            
             # if not equal, return false
+            # 1st half means data types are not equal; 2nd half is for join command (particularly port)
             if((not isinstance(copyList[x], parameter_types[x])) and (isinstance(parameter_types[1], int) and (not copyList[x].isdigit()))):
                errorPrinting(7)
                return False
+            
         # otherwise, return true
         return True
+    
+    # these are only specifically for message commands, just need to >= to required parameters
     elif(command == 'all' or command == 'dm'):
          if (len_command_parameters >= len_dict_parameters):
               return True
          else:
               errorPrinting(7)
               return False
+    # # of parameters in command dictionary is not equal the user's command parameters
     else:
          errorPrinting(7)
          return False
@@ -137,7 +148,9 @@ def parameterCheck(list):
 # checks if command is valid and is in the list of commands; also calls parameterCheck
 def errorCheckCommand(list):
      command = list[0].lower()
+
      if(command in command_dict):
+        # if parameters match dictionary requirements
         if(parameterCheck(list)):
              return True
         else:
@@ -146,20 +159,25 @@ def errorCheckCommand(list):
           errorPrinting(6) # command not found error
           return False
 
-def listenMessages(client): # not done, threading needed
+# listener thread for any messages
+def listenMessages(client):
      while True:
           try:
                message = recv_data(client).decode()
+               # if not empty
                if(message):
                     print(message)
           except:
                return
-    
+
+# method to close socket in case of errors  
 def closingSocket(client):
      client.close()
      print_date("Successfully disconnected.")
+
 ########################################################################
 
+## setup
 os.system('cls')
 
 # variables
@@ -174,6 +192,7 @@ while(not hasQuit):
     time.sleep(0.5)
     userInput = input()
 
+    # user command is not empty
     if (userInput != ""):
      isThereASlash = (userInput[0] == '/')
 
@@ -193,15 +212,16 @@ while(not hasQuit):
                          errorPrinting(9)
                          
                     else:
-                         #client socket, TCP
+                         #client socket parameters
                          command = command[1].split(" ")
                          host = command[0]
                          port = int(command[1])
 
+                         # create a new socket to connect to server
                          try: 
                               clientSocket = socket(AF_INET, SOCK_STREAM)
                               clientSocket.connect((host, port))
-                              thread = threading.Thread(target=listenMessages, args=(clientSocket,))
+                              thread = threading.Thread(target=listenMessages, args=(clientSocket,))          # listener thread
                               thread.start()
                               isConnected = True
                               print_date("You're now connected to the server.")
@@ -211,34 +231,41 @@ while(not hasQuit):
 
                # user disconnects the server
                elif(command[0] == 'leave'):
+
                     # check if user is connected first before trying to disconnect
                     if(isConnected):
                          try:
                               clientSocket.close()
                               print_date("Successfully disconnected.")
                               isConnected = False
+
                          except:
                               errorPrinting(14)
                               closingSocket(clientSocket)
                               isConnected = False
-                              
+                              currentUsername=''
+                         
                     else:
                          errorPrinting(2)
-                   
-
-               
+                               
                # user registers a username
                elif(command[0] == 'register'):
+
                     # user is already connected but hasn't registered
                     if(isConnected):
                          username = command[1]
+
                          if (username != ' ' and username != ''):
                               try:
-                                   # check if error or success
+                                   # sends username to check if error or successfully registered
                                    send_data(clientSocket, 'register ' + username)
                                    currentUsername = username
+
                               except:
                                    errorPrinting(18)
+                                   closingSocket(clientSocket)
+                                   isConnected = False
+                                   currentUsername=''
                          else:
                               errorPrinting(12)
 
@@ -246,8 +273,9 @@ while(not hasQuit):
                     if (not isConnected):
                          errorPrinting(10)
 
+               # command to store user files onto server
                elif(command[0] == 'store'):
-                    # stop listening for incoming messages
+
                     if(isConnected):
 
                          # connecting a new socket to handle files; the problem with the current clientsocket
@@ -255,13 +283,19 @@ while(not hasQuit):
                          # and store the information we need
                          clientSocket2 = socket(AF_INET, SOCK_STREAM)
                          clientSocket2.connect((host, port))
+
+                         # check if user is registered using the host and port
                          send_data(clientSocket2, 'isregistered ' + clientSocket.getsockname()[0] + ' ' + str(clientSocket.getsockname()[1]))
                          isRegistered = recv_data(clientSocket2).decode()
                          
+                         # is the user registered?
                          if(isRegistered == 'success'):
+
                               # check if file exists
                               filename = command[1]
                               fileExists = True
+
+                              # reading data
                               try:
                                    with open(filename, 'r') as f:
                                         fData = f.read()
@@ -269,16 +303,18 @@ while(not hasQuit):
                                    errorPrinting(4)    
                                    fileExists = False
                                    clientSocket2.close()
-                                   
+
                               if (fileExists):
+
+                                   # send command, filename, and data read
                                    try:
-                                        
                                         send_data(clientSocket2, 'store')
                                         send_data(clientSocket2, filename)
                                         send_data(clientSocket2, fData)
                                         print(recv_data(clientSocket2).decode())
 
                                    except:  
+                                        errorPrinting(23)
                                         closingSocket(clientSocket)
                                         isConnected = False
                                         currentUsername=''
@@ -292,11 +328,13 @@ while(not hasQuit):
                     else:
                          errorPrinting(10)
                
+               # get file list
                elif(command[0] == 'dir'):
-                    # check if connected and registered, not done
+
                     if(isConnected):
                          try:
                               send_data(clientSocket, 'dir')
+
                          except:
                               errorPrinting(15)
                               closingSocket(clientSocket)
@@ -304,10 +342,11 @@ while(not hasQuit):
                               currentUsername=''
                     else:
                          errorPrinting(10)
-                    
+               
+               # download file from server
                elif(command[0] == 'get'):
-                    # not done yet...
                     if(isConnected):
+
                          # connecting a new socket to handle files; the problem with the current clientsocket
                          # is it only receives and prints messages, there's no certainty that we can receive
                          # and store the information we need
@@ -318,14 +357,19 @@ while(not hasQuit):
  
                          if(isRegistered == "success"):
                               filename = command[1]
+
+                              # send command to server to get the file if it exists
                               try:
                                    send_data(clientSocket2, 'get ' + filename)
                                    fileStatus = recv_data(clientSocket2).decode()
                                    
+                                   # if file exists, get file data and write a copy of the file
                                    if (fileStatus == 'success'):
                                         fData = recv_data(clientSocket2).decode()
+
                                         with open(filename, 'w') as fileCopy:
                                              fileCopy.write(fData)
+
                                         print(recv_data(clientSocket2).decode())
                                    else:       
                                         print(recv_data(clientSocket2).decode())  
@@ -337,20 +381,25 @@ while(not hasQuit):
                                    currentUsername=''
                               finally:
                                    clientSocket2.close()
+
                          else:
                               errorPrinting(8)
                               clientSocket2.close()
                               
                     else:
                          errorPrinting(10)
-                    
+               
+               # broadcast a message to all users
                elif(command[0] == 'all'):
+
                     if(isConnected):
                          try:
+                              # send command to broadcast then send the message
                               now = datetime.datetime.now()
                               send_data(clientSocket, 'all')
                               message = '<' + str(now) + '> [Broadcast] ' + currentUsername + ': ' +  command[1]
                               send_data(clientSocket, message)
+
                          except:
                               errorPrinting(21)
                               closingSocket(clientSocket)
@@ -360,15 +409,20 @@ while(not hasQuit):
                     elif (not isConnected):
                          errorPrinting(10)
 
-
+               # direct message to another user
                elif(command[0] == 'dm'):  
+
                     if(isConnected):
+
                          try:
+                              # get the message; basically [1: ] from user input (username at index 0 and message at index 1 to n)
                               command = command[1].split(" ", 1)
                               now = datetime.datetime.now()
+
                               send_data(clientSocket, 'dm')
                               message = '<' + str(now) + '> [Direct Message] ' + currentUsername + ': ' +  command[1]
                               send_data(clientSocket, command[0] + ' ' + message)
+
                          except:
                               errorPrinting(20)
                               closingSocket(clientSocket)
@@ -378,7 +432,7 @@ while(not hasQuit):
                     elif (not isConnected):
                          errorPrinting(10)
 
-               
+               # get all active users
                elif(command[0] == 'active'):
                     if(isConnected):
                          try:
@@ -392,6 +446,7 @@ while(not hasQuit):
                     elif (not isConnected):
                          errorPrinting(10)
 
+               # display all commands
                elif(command[0] == '?'):
                     print_date('''\n
                     NOTE: For command get and store, you will not be able to receive any messages from anyone while executing the command.\n
@@ -409,9 +464,11 @@ while(not hasQuit):
                     ?          // Display all available commands                                  /?\n
                     quit       // Quit the client application.                                    /quit\n
                                ''')
+                    
                # user quits the application
                elif (command[0] == 'quit'):
                     print_date("Quitting the application...")
+
                     if(isConnected):
                          try:
                               clientSocket.close()
@@ -419,10 +476,11 @@ while(not hasQuit):
                               isConnected = False
                          except:
                               print_date(errorPrinting(14))
+                              closingSocket(clientSocket)
+                              isConnected = False
                     hasQuit = True
-
                     
      else:
-          errorPrinting(6) # command not found error
+          errorPrinting(6)     # command not found error
           
 sys.exit()
