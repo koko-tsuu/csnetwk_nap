@@ -194,15 +194,15 @@ def threadServer(conn, address):
                 elif(userCommand[0] == "get"):
                     filename = userCommand[1]
                     fileCopyPath = currentPath + '\\' + filename
-                    #try:
-                    with open(fileCopyPath, 'r') as fileCopy:
-                        fData = fileCopy.read()
-                    send_data(conn, 'success')
-                    fileExists = True
-                    #except:
-                    #    send_data(conn, 'fail')
-                    #    send_data(conn, errorPrinting(5))
-                    #    fileExists = False
+                    try:
+                        with open(fileCopyPath, 'r') as fileCopy:
+                            fData = fileCopy.read()
+                        send_data(conn, 'success')
+                        fileExists = True
+                    except:
+                        send_data(conn, 'fail')
+                        send_data(conn, errorPrinting(5))
+                        fileExists = False
 
                     if (fileExists):
                         try:

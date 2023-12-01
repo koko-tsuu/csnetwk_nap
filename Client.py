@@ -255,24 +255,24 @@ while(not hasQuit):
                          # and store the information we need
                          clientSocket2 = socket(AF_INET, SOCK_STREAM)
                          clientSocket2.connect((host, port))
-                         send_data(clientSocket2, 'isregistered ' + str(clientSocket.getsockname()[0]) + ' ' + str(clientSocket.getsockname()[1]))
+                         send_data(clientSocket2, 'isregistered ' + clientSocket.getsockname()[0] + ' ' + str(clientSocket.getsockname()[1]))
                          isRegistered = recv_data(clientSocket2).decode()
                          
                          if(isRegistered == 'success'):
                               # check if file exists
                               filename = command[1]
+                              fileExists = True
                               try:
-                                   f = open(filename, 'r')
-                                   fData = f.read()
-                                   f.close()
-                                   fileExists = True
+                                   with open(filename, 'r') as f:
+                                        fData = f.read()
                               except:
                                    errorPrinting(4)    
                                    fileExists = False
                                    clientSocket2.close()
-
+                                   
                               if (fileExists):
                                    try:
+                                        
                                         send_data(clientSocket2, 'store')
                                         send_data(clientSocket2, filename)
                                         send_data(clientSocket2, fData)
@@ -285,7 +285,7 @@ while(not hasQuit):
 
                                    finally: 
                                         clientSocket2.close()
-                         elif(isRegistered == 'fail'):
+                         else:
                               errorPrinting(8)
                               clientSocket2.close()
                         
@@ -337,7 +337,7 @@ while(not hasQuit):
                                    currentUsername=''
                               finally:
                                    clientSocket2.close()
-                         elif(isRegistered == 'fail'):
+                         else:
                               errorPrinting(8)
                               clientSocket2.close()
                               
