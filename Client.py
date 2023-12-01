@@ -236,7 +236,7 @@ while(not hasQuit):
                                    # check if error or success
                                    send_data(clientSocket, 'register ' + username)
                                    currentUsername = username
-                                   print()
+                                   print(clientSocket.getsockname())
                               except:
                                    errorPrinting(18)
                          else:
@@ -255,11 +255,10 @@ while(not hasQuit):
                          # and store the information we need
                          clientSocket2 = socket(AF_INET, SOCK_STREAM)
                          clientSocket2.connect((host, port))
-                         send_data(clientSocket2, 'isregistered ' + str(clientSocket.getsockname()[0]))
-                         send_data(clientSocket2, clientSocket2)
+                         send_data(clientSocket2, 'isregistered ' + str(clientSocket.getsockname()[0]) + ' ' + str(clientSocket.getsockname()[1]))
                          isRegistered = recv_data(clientSocket2).decode()
                          
-                         if(isRegistered == 'True'):
+                         if(isRegistered == 'success'):
                               # check if file exists
                               filename = command[1]
                               try:
@@ -286,7 +285,7 @@ while(not hasQuit):
 
                                    finally: 
                                         clientSocket2.close()
-                         else:
+                         elif(isRegistered == 'fail'):
                               errorPrinting(8)
                               clientSocket2.close()
                         
@@ -314,15 +313,14 @@ while(not hasQuit):
                          # and store the information we need
                          clientSocket2 = socket(AF_INET, SOCK_STREAM)
                          clientSocket2.connect((host, port))
-                         send_data(clientSocket2, 'isregistered ' + str(clientSocket.getsockname()[0]) + ' ' + str(clientSocket.getsockname()[1]))
+                         send_data(clientSocket2, 'isregistered ' + clientSocket.getsockname()[0] + ' ' + str(clientSocket.getsockname()[1]))
                          isRegistered = recv_data(clientSocket2).decode()
-
-                         if(isRegistered == "True"):
+                         print(isRegistered)
+                         if(isRegistered == "success"):
                               filename = command[1]
                               print(filename)
                               try:
                                    send_data(clientSocket2, 'get ' + filename)
-                                   print('ayaw ba talaga dito')
                                    fileStatus = recv_data(clientSocket2).decode()
                                    
                                    if (fileStatus == 'success'):
@@ -341,7 +339,7 @@ while(not hasQuit):
                                    currentUsername=''
                               finally:
                                    clientSocket2.close()
-                         else:
+                         elif(isRegistered == 'fail'):
                               errorPrinting(8)
                               clientSocket2.close()
                               

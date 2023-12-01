@@ -120,12 +120,13 @@ def threadServer(conn, address):
     hasRegistered = False
     username = ''
     listOfUsers.append(('', address, conn))
+    print(listOfUsers)
     print_date(str(address[0]) + ' (' + str(address[1]) + "): Connected to the server.")
     now = datetime.datetime.now()
     broadcast_msg("<" + str(now) + "> " + str(address[0]) + ' (' + str(address[1]) + ") " + "has joined the server.")
 
     while True:
-        #try:
+        try:
             # get the command from the user
             userCommand = recv_data(conn)
             print(userCommand.decode())
@@ -278,15 +279,16 @@ def threadServer(conn, address):
 
                 elif(userCommand[0] == 'isregistered'):
                     listOfUsers.remove(('', address, conn))
-                    userAddress = userCommand[1]
-                    userConn = recv_data(conn).decode()
-                    alreadyRegistered = "False"
+                    userHost = userCommand[1]
+                    userPort = userCommand[2]
+                    alreadyRegistered = "fail"
                     
                     for i in listOfUsers:
-                        if i[1] == userAddress and i[2] == userConn:
+                        print(i[1][0] == userHost and str(i[1][1]) == userPort and i[0] != '')
+                        if i[1][0] == userHost and str(i[1][1]) == userPort:       
                             if i[0] != '':
                                 username = i[0]
-                                alreadyRegistered = "True"
+                                alreadyRegistered = "success"
                             break
                     print(alreadyRegistered)
                     send_data(conn, alreadyRegistered)
@@ -295,18 +297,18 @@ def threadServer(conn, address):
 
 
         # client suddenly closed the connection
-        # except:
-        #     print_date(str(address[0]) + " (" + str(address[1]) + "): Closed connection.")
-        #     try:
-        #         now = datetime.datetime.now()
-        #         broadcast_msg("<" + str(now) + "> " + str(address[0]) + ' (' + str(address[1]) + ") has disconnected.")
-        #         listOfUsers.remove((username, address, conn))
-        #         conn.close()
-        #         print_date(str(address[0]) + ' (' + str(address[1]) + ")" +  ": Socket closed.")
-        #         break
-        #     except:
-        #         print_date("Something went wrong in closing the socket.")
-        #         break
+        except:
+             print_date(str(address[0]) + " (" + str(address[1]) + "): Closed connection.")
+             try:
+                 now = datetime.datetime.now()
+                 broadcast_msg("<" + str(now) + "> " + str(address[0]) + ' (' + str(address[1]) + ") has disconnected.")
+                 listOfUsers.remove((username, address, conn))
+                 conn.close()
+                 print_date(str(address[0]) + ' (' + str(address[1]) + ")" +  ": Socket closed.")
+                 break
+             except:
+                 print_date("Something went wrong in closing the socket.")
+                 break
 
 
         
