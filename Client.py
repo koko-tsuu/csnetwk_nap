@@ -204,6 +204,7 @@ while(not hasQuit):
                               thread = threading.Thread(target=listenMessages, args=(clientSocket,))
                               thread.start()
                               isConnected = True
+                              print_date("You're now connected to the server.")
 
                          except:
                               errorPrinting(1)
@@ -236,7 +237,6 @@ while(not hasQuit):
                                    # check if error or success
                                    send_data(clientSocket, 'register ' + username)
                                    currentUsername = username
-                                   print(clientSocket.getsockname())
                               except:
                                    errorPrinting(18)
                          else:
@@ -308,17 +308,16 @@ while(not hasQuit):
                elif(command[0] == 'get'):
                     # not done yet...
                     if(isConnected):
-                          # connecting a new socket to handle files; the problem with the current clientsocket
+                         # connecting a new socket to handle files; the problem with the current clientsocket
                          # is it only receives and prints messages, there's no certainty that we can receive
                          # and store the information we need
                          clientSocket2 = socket(AF_INET, SOCK_STREAM)
                          clientSocket2.connect((host, port))
                          send_data(clientSocket2, 'isregistered ' + clientSocket.getsockname()[0] + ' ' + str(clientSocket.getsockname()[1]))
                          isRegistered = recv_data(clientSocket2).decode()
-                         print(isRegistered)
+ 
                          if(isRegistered == "success"):
                               filename = command[1]
-                              print(filename)
                               try:
                                    send_data(clientSocket2, 'get ' + filename)
                                    fileStatus = recv_data(clientSocket2).decode()
@@ -327,7 +326,6 @@ while(not hasQuit):
                                         fData = recv_data(clientSocket2).decode()
                                         with open(filename, 'w') as fileCopy:
                                              fileCopy.write(fData)
-                                        print(fData)
                                         print(recv_data(clientSocket2).decode())
                                    else:       
                                         print(recv_data(clientSocket2).decode())  

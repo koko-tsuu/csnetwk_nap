@@ -120,16 +120,13 @@ def threadServer(conn, address):
     hasRegistered = False
     username = ''
     listOfUsers.append(('', address, conn))
-    print(listOfUsers)
     print_date(str(address[0]) + ' (' + str(address[1]) + "): Connected to the server.")
     now = datetime.datetime.now()
-    broadcast_msg("<" + str(now) + "> " + str(address[0]) + ' (' + str(address[1]) + ") " + "has joined the server.")
 
     while True:
         try:
             # get the command from the user
             userCommand = recv_data(conn)
-            print(userCommand.decode())
             if userCommand:
                 userCommand = userCommand.decode()
                 userCommand = userCommand.split(" ")
@@ -284,13 +281,11 @@ def threadServer(conn, address):
                     alreadyRegistered = "fail"
                     
                     for i in listOfUsers:
-                        print(i[1][0] == userHost and str(i[1][1]) == userPort and i[0] != '')
                         if i[1][0] == userHost and str(i[1][1]) == userPort:       
                             if i[0] != '':
                                 username = i[0]
                                 alreadyRegistered = "success"
                             break
-                    print(alreadyRegistered)
                     send_data(conn, alreadyRegistered)
 
                     
@@ -301,10 +296,7 @@ def threadServer(conn, address):
              print_date(str(address[0]) + " (" + str(address[1]) + "): Closed connection.")
              try:
                  now = datetime.datetime.now()
-                 broadcast_msg("<" + str(now) + "> " + str(address[0]) + ' (' + str(address[1]) + ") has disconnected.")
                  listOfUsers.remove((username, address, conn))
-                 conn.close()
-                 print_date(str(address[0]) + ' (' + str(address[1]) + ")" +  ": Socket closed.")
                  break
              except:
                  print_date("Something went wrong in closing the socket.")
