@@ -3,6 +3,7 @@ import datetime
 import os
 import threading
 import struct
+import sys
 
 # printing date with string passed
 def print_date(message):
@@ -105,6 +106,12 @@ def errorPrinting(errNum):
        error = "The user to be messaged does not exist. Please make sure to check if you wrote the username correctly."
   msg = msg + error
   return msg
+  
+
+def shutServer(serverSocket):
+        input()
+        serverSocket.close()
+        sys.exit(0)
 
 # function to be ran for the threading 
 def threadServer(conn, address):
@@ -118,25 +125,17 @@ def threadServer(conn, address):
     broadcast_msg("<" + str(now) + "> " + str(address[0]) + ' (' + str(address[1]) + ") " + "has joined the server.")
 
     while True:
-        try:
+        #try:
             # get the command from the user
             userCommand = recv_data(conn)
-
+            print(userCommand.decode())
             if userCommand:
                 userCommand = userCommand.decode()
                 userCommand = userCommand.split(" ")
-
-                # user wants to disconnect from server
-                if(userCommand[0] == "disconnect"):
-                    print_date(str(address[0]) + " (" + str(address[1]) + "): Received command to disconnect.")
-                    listOfUsers.remove((username, address, conn))
-                    conn.close()
-                    print_date(str(address[0]) + " (" + str(address[1]) + "): Closed connection.")
-                    now = datetime.datetime.now()
-                    broadcast_msg("<" + str(now) + "> " + str(address[0]) + ' (' + str(address[1]) + ") has disconnected.")
+                
 
                 # user wants to register
-                elif(userCommand[0] == "register"):
+                if(userCommand[0] == "register"):
                     print_date(str(address[0]) + " (" + str(address[1]) + "): To register.")
                     temp_username = userCommand[1]
                     now = datetime.datetime.now()
@@ -195,17 +194,17 @@ def threadServer(conn, address):
                       
                 
                 elif(userCommand[0] == "get"):
-                    
-                    filename = recv_data(conn)
-                    try:
-                        f = open(filename)
-                        fData = f.read()
-                        f.close()
-                        send_data(conn, 'success')
-                    except:
-                        send_data(conn, 'fail')
-                        send_data(conn, errorPrinting(5))
-                        fileExists = False
+                    filename = userCommand[1]
+                    fileCopyPath = currentPath + '\\' + filename
+                    #try:
+                    with open(fileCopyPath, 'r') as fileCopy:
+                        fData = fileCopy.read()
+                    send_data(conn, 'success')
+                    fileExists = True
+                    #except:
+                    #    send_data(conn, 'fail')
+                    #    send_data(conn, errorPrinting(5))
+                    #    fileExists = False
 
                     if (fileExists):
                         try:
@@ -279,32 +278,35 @@ def threadServer(conn, address):
 
                 elif(userCommand[0] == 'isregistered'):
                     listOfUsers.remove(('', address, conn))
-                    userHost = userCommand[1]
-                    userPort = userCommand[2]
-                    alreadyRegistered = False
+                    userAddress = userCommand[1]
+                    userConn = recv_data(conn).decode()
+                    alreadyRegistered = "False"
+                    
                     for i in listOfUsers:
-                        if i[1] == userHost and i[2] == userPort:
+                        if i[1] == userAddress and i[2] == userConn:
                             if i[0] != '':
-                                alreadyRegistered = True
+                                username = i[0]
+                                alreadyRegistered = "True"
                             break
+                    print(alreadyRegistered)
                     send_data(conn, alreadyRegistered)
 
                     
 
 
         # client suddenly closed the connection
-        except:
-            print_date(str(address[0]) + ' (' + str(address[1]) + ") has unexpectedly disconnected. Socket will be closed.")
-            try:
-                now = datetime.datetime.now()
-                broadcast_msg("<" + str(now) + "> " + str(address[0]) + ' (' + str(address[1]) + ") has disconnected.")
-                listOfUsers.remove((username, address, conn))
-                conn.close()
-                print_date(str(address[0]) + ' (' + str(address[1]) + ")" +  ": Socket closed.")
-                break
-            except:
-                print_date("Something went wrong in closing the socket.")
-                break
+        # except:
+        #     print_date(str(address[0]) + " (" + str(address[1]) + "): Closed connection.")
+        #     try:
+        #         now = datetime.datetime.now()
+        #         broadcast_msg("<" + str(now) + "> " + str(address[0]) + ' (' + str(address[1]) + ") has disconnected.")
+        #         listOfUsers.remove((username, address, conn))
+        #         conn.close()
+        #         print_date(str(address[0]) + ' (' + str(address[1]) + ")" +  ": Socket closed.")
+        #         break
+        #     except:
+        #         print_date("Something went wrong in closing the socket.")
+        #         break
 
 
         
@@ -341,6 +343,10 @@ except:
     print("[Error]: Something wrong has occurred in the server setup. Please check if you typed your host and port correctly.")
 
 if(setupCorrectly):
+        
+        shutThread = threading.Thread(target=shutServer, args=(serverSocket,))
+        shutThread.start()
+
         now = datetime.datetime.now()
         serverSocket.listen()
         print("<" + str(now) + "> Listening for any incoming connections on " + host + ":" + str(port))
@@ -354,5 +360,6 @@ if(setupCorrectly):
                 thread = threading.Thread(target=threadServer, args=(conn, address))
                 thread.start()
             except:
-                print('[Error]: Something went wrong in one of the client sockets.')
+                print('[Server Shutdown]: Admin has shut down the server, or an error has occured in one of the client sockets.')
+                break
                 

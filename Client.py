@@ -148,9 +148,12 @@ def errorCheckCommand(list):
 
 def listenMessages(client): # not done, threading needed
      while True:
-          message = recv_data(client).decode()
-          if(message):
-               print(message)
+          try:
+               message = recv_data(client).decode()
+               if(message):
+                    print(message)
+          except:
+               return
     
 def closingSocket(client):
      client.close()
@@ -210,7 +213,6 @@ while(not hasQuit):
                     # check if user is connected first before trying to disconnect
                     if(isConnected):
                          try:
-                              send_data(clientSocket, 'disconnect')
                               clientSocket.close()
                               print_date("Successfully disconnected.")
                               isConnected = False
@@ -234,6 +236,7 @@ while(not hasQuit):
                                    # check if error or success
                                    send_data(clientSocket, 'register ' + username)
                                    currentUsername = username
+                                   print()
                               except:
                                    errorPrinting(18)
                          else:
@@ -252,22 +255,21 @@ while(not hasQuit):
                          # and store the information we need
                          clientSocket2 = socket(AF_INET, SOCK_STREAM)
                          clientSocket2.connect((host, port))
-                         send_data(clientSocket2, 'isregistered ' + clientSocket.getsockname()[0] + ' ' + clientSocket.getsockname()[1])
-
+                         send_data(clientSocket2, 'isregistered ' + str(clientSocket.getsockname()[0]))
+                         send_data(clientSocket2, clientSocket2)
                          isRegistered = recv_data(clientSocket2).decode()
-
-                         if(isRegistered):
+                         
+                         if(isRegistered == 'True'):
                               # check if file exists
                               filename = command[1]
-                              print(filename)
                               try:
-                                   f = open(filename)
+                                   f = open(filename, 'r')
                                    fData = f.read()
                                    f.close()
+                                   fileExists = True
                               except:
                                    errorPrinting(4)    
                                    fileExists = False
-                                   send_data(clientSocket2, 'disconnect')
                                    clientSocket2.close()
 
                               if (fileExists):
@@ -283,12 +285,9 @@ while(not hasQuit):
                                         currentUsername=''
 
                                    finally: 
-                                        send_data(clientSocket2, 'disconnect')
                                         clientSocket2.close()
                          else:
                               errorPrinting(8)
-                              print(recv_data(clientSocket).decode())
-                              send_data(clientSocket2, 'disconnect')
                               clientSocket2.close()
                         
                     else:
@@ -315,36 +314,35 @@ while(not hasQuit):
                          # and store the information we need
                          clientSocket2 = socket(AF_INET, SOCK_STREAM)
                          clientSocket2.connect((host, port))
-                         send_data(clientSocket2, 'isregistered ' + clientSocket.getsockname()[0] + ' ' + clientSocket.getsockname()[1])
-
+                         send_data(clientSocket2, 'isregistered ' + str(clientSocket.getsockname()[0]) + ' ' + str(clientSocket.getsockname()[1]))
                          isRegistered = recv_data(clientSocket2).decode()
 
-                         if(isRegistered):
+                         if(isRegistered == "True"):
                               filename = command[1]
+                              print(filename)
                               try:
-                                   send_data(clientSocket2, 'get')
-                                   send_data(clientSocket2, filename)
+                                   send_data(clientSocket2, 'get ' + filename)
+                                   print('ayaw ba talaga dito')
                                    fileStatus = recv_data(clientSocket2).decode()
+                                   
                                    if (fileStatus == 'success'):
-                                        fData = recv_data(clientSocket).decode()
-                                        fp = open(filename, 'w')
-                                        fp.write(fData)
-                                        fp.close()
-                                        print(recv_data(clientSocket).decode())
+                                        fData = recv_data(clientSocket2).decode()
+                                        with open(filename, 'w') as fileCopy:
+                                             fileCopy.write(fData)
+                                        print(fData)
+                                        print(recv_data(clientSocket2).decode())
                                    else:       
-                                        print(recv_data(clientSocket).decode())  
-                                  
+                                        print(recv_data(clientSocket2).decode())  
+                                   
                               except:
                                    errorPrinting(17)
                                    closingSocket(clientSocket)
                                    isConnected = False
                                    currentUsername=''
                               finally:
-                                   send_data(clientSocket2, 'disconnect')
                                    clientSocket2.close()
                          else:
-                              print(recv_data(clientSocket).decode())
-                              send_data(clientSocket2, 'disconnect')
+                              errorPrinting(8)
                               clientSocket2.close()
                               
                     else:
@@ -420,7 +418,6 @@ while(not hasQuit):
                     print_date("Quitting the application...")
                     if(isConnected):
                          try:
-                              clientSocket.send("disconnect".encode())
                               clientSocket.close()
                               print_date("Successfully disconnected.")
                               isConnected = False
