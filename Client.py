@@ -21,7 +21,7 @@ command_dict = {
      'dm':          [2, [str, str]],
      'active':      [0, []],
      "?" :          [0, []],
-     "quit" :       [0, []],
+     "end" :        [0, []],
 }
 
 # printing date with string passed
@@ -462,11 +462,11 @@ while(not hasQuit):
                     dm         // Message a specific user                                         /dm <username> <message>            /dm Alice What are you doing\n
                     active     // Get list of all active users                                    /active\n         
                     ?          // Display all available commands                                  /?\n
-                    quit       // Quit the client application.                                    /quit\n
+                    end        // Quit the client application.                                    /end\n
                                ''')
                     
                # user quits the application
-               elif (command[0] == 'quit'):
+               elif (command[0] == 'end'):
                     print_date("Quitting the application...")
 
                     if(isConnected):
